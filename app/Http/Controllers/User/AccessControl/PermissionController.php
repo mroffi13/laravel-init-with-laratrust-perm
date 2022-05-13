@@ -5,12 +5,15 @@ namespace App\Http\Controllers\User\AccessControl;
 use App\Helpers\API;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class PermissionController extends Controller
 {
     public $limit = 25;
+    protected $permissionService;
 
     /**
      * Create a new controller instance.
@@ -20,6 +23,7 @@ class PermissionController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+        $this->permissionService = new PermissionService();
     }
 
     /**
@@ -29,9 +33,10 @@ class PermissionController extends Controller
      */
     public function index(Request $request)
     {
-        if (!Helper::isAbleTo($request, 'read-acl')) {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('read-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Read Acl]. Please contact administrator!',
+                'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!',
                 'alert alert-warning',
                 'warning'
             );
@@ -45,7 +50,6 @@ class PermissionController extends Controller
             'Created At',
             'Updated By',
             'Updated At',
-            'Status',
             'Action'
         ];
 
@@ -60,9 +64,10 @@ class PermissionController extends Controller
     public function create(Request $request)
     {
         //
-        if (!Helper::isAbleTo($request, 'create-acl')) {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('create-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Create Acl]. Please contact administrator!',
+                'Anda tidak memiliki akses [Create Acl]. Mohon hubungi administrator!',
                 'alert alert-warning',
                 'warning'
             );
@@ -90,10 +95,11 @@ class PermissionController extends Controller
         ];
 
         try {
+            $userLogin = Auth::user();
             // check permission
-            if (!Helper::isAbleTo($request, 'create-acl')) {
+            if (!$userLogin->isAbleTo('create-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Create Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Create Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
@@ -181,9 +187,10 @@ class PermissionController extends Controller
     public function show(Request $request, $id)
     {
         // check permission
-        if (!Helper::isAbleTo($request, 'read-acl')) {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('read-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Read Acl]. Please contact administrator!',
+                'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!',
                 'alert alert-warning',
                 'warning'
             );
@@ -225,9 +232,10 @@ class PermissionController extends Controller
     public function edit(Request $request, $id)
     {
         // check permission
-        if (!Helper::isAbleTo($request, 'update-acl')) {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('update-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Update Acl]. Please contact administrator!',
+                'Anda tidak memiliki akses [Update Acl]. Mohon hubungi administrator!',
                 'alert alert-warning',
                 'warning'
             );
@@ -279,9 +287,10 @@ class PermissionController extends Controller
 
         try {
             // check permission
-            if (!Helper::isAbleTo($request, 'update-acl')) {
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('update-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Update Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Update Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
@@ -353,9 +362,10 @@ class PermissionController extends Controller
             }
 
             // check permission
-            if (!Helper::isAbleTo($request, 'delete-acl')) {
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('delete-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Delete Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Delete Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
@@ -395,12 +405,11 @@ class PermissionController extends Controller
 
         try {
             // dd($request->all());
-            if (!Helper::isAbleTo($request, 'read-acl')) {
-                $return['error'] = 'You don\'t have permission [Read Acl]. Please contact administrator!';
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('read-acl')) {
+                $return['error'] = 'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
-
-            $access_token = $request->access_token;
 
             if (!empty($request->length))
                 $this->limit = $request->length;
@@ -411,61 +420,68 @@ class PermissionController extends Controller
             $sort_by = $request->columns[$column]['data'];
             $sort = $order['dir'];
 
-            $param = [
-                'endpoint' => 'acl/permissions',
-                'get_request' => [
-                    'page' => $page,
-                    'pageSize' => $this->limit,
-                    'keyword' => addcslashes($request->search['value'], "'"),
-                    'filters' => [],
-                    'sort' => $sort,
-                    'sort_by' => $sort_by
-                ],
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $access_token
-                ]
-            ];
+            $new_request = collect([]);
+            $new_request->page = $page;
+            $new_request->pageSize = $this->limit;
+            $new_request->keyword = addcslashes($request->search['value'], "'");
+            $new_request->filters = [];
+            $new_request->sort = $sort;
+            $new_request->sort_by = $sort_by;
 
-            $param['get_request']['filters'] = !empty($param['get_request']['filters']) ? Helper::maybe_serialize($param['get_request']['filters']) : '';
 
-            $response = API::get($param);
-            $response = json_decode($response);
+            $new_request->filters = !empty($new_request->filters) ? Helper::maybe_serialize($new_request->filters) : '';
+            // dump($new_request);
+            $data = $this->permissionService->list($new_request);
+            // dd($data);
+            if (!isset($data['error'])) {
+                $return['recordsTotal'] = $return['recordsFiltered'] = $data['records'];
 
-            if ($response->code == 200) {
-                $return['recordsTotal'] = $return['recordsFiltered'] = $response->data->records;
-
-                if (!empty($response->data->permissions)) {
-                    foreach ($response->data->permissions as $permission) {
+                if (!empty($data['permissions'])) {
+                    foreach ($data['permissions'] as $permission) {
                         $created_at = $permission->created_at;
                         $updated_at = $permission->updated_at;
                         $permission->number = $number;
                         $number++;
                         $permission->created_at = date('d M y H:i:s', strtotime($created_at));
                         $permission->updated_at = date('d M y H:i:s', strtotime($updated_at));
-                        switch ($permission->status) {
-                            case 2:
-                                $permission->status = Helper::badge($permission->status_label, 'warning');
-                                break;
-
-                            default:
-                                $permission->status = Helper::badge($permission->status_label, 'success');
-                                break;
-                        }
 
                         $permission->url = '/access-control/permissions/';
                         $permission->action_html = view('partials.action', [
                             'data' => $permission,
-                            'buttons' => Helper::button_defaut($permission, 'acl'),
+                            'buttons' => [
+                                [
+                                    'icon' => 'fas fa-eye', // icon action
+                                    'label' => 'Detail', // label action
+                                    'show' => true, // show action
+                                    'classes' => '', // add classes
+                                    'url' => $permission->url . $permission->id, // url
+                                    'can' => 'read-acl', // permission
+                                    'attributes' => null // data-*
+                                ],
+                                [
+                                    'icon' => 'fas fa-trash',
+                                    'label' => 'Delete',
+                                    'show' => true,
+                                    'url' => null,
+                                    'classes' => 'delete-btn',
+                                    'can' => 'delete-acl',
+                                    'attributes' => [
+                                        'id' => encrypt($permission->id)
+                                    ]
+                                ],
+                            ],
                         ])->render();
                     }
 
-                    $return['data'] = $response->data->permissions;
+                    $return['data'] = $data['permissions'];
                 }
             }
+            else
+                $return['error'] = $data['error'];
 
             return response()->json($return);
         } catch (\Exception $e) {
-            $return['error'] = $e->getMessage();
+            $return['error'] = $e->getMessage(). '. Line: '. $e->getLine();
             return response()->json($return);
         }
     }
@@ -477,7 +493,8 @@ class PermissionController extends Controller
         ];
         try {
             // dd($request->all());
-            if (!Helper::isAbleTo($request, 'read-acl')) {
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('read-acl')) {
                 $return['error'] = 'You don\'t have permission [Read Acl]. Please contact administrator!';
                 return response()->json($return, 200);
             }

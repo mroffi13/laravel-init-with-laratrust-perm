@@ -51,8 +51,8 @@ function getPermissionList()
       processing:true,
       // searchDelay: 1000,
       language: {
-         "emptyTable": "Permissions not available.",
-         processing: img_loading + 'Loading...',
+         "emptyTable": "Permissions tidak tersedia.",
+         processing: img_loading + 'Memuat...',
       },
       "fnDrawCallback": function( oSettings ) 
       { 
@@ -119,12 +119,6 @@ function getPermissionList()
             defaultContent: "<i>-</i>",
             "className": 'align-middle'
             // width:"200px"
-         },
-         {
-            data:'status',
-            responsivePriority: 8,
-            defaultContent: "<i>-</i>",
-            "className": 'align-middle'
          },
          {
             data:'action_html',

@@ -74,7 +74,7 @@
 </head>
 
 <body class="@yield('classes_body')" @yield('body_data')>
-
+    <input type="hidden" id="base_url" value="{{url('/')}}/">
     {{-- Body Content --}}
     @yield('body')
 
@@ -83,9 +83,11 @@
         <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
         <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
         <script src="{{ asset('vendor/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
-        <script src="{{ asset('js/base.js') }}"></script>
+        
         {{-- Configured Scripts --}}
         @include('adminlte::plugins', ['type' => 'js'])
+
+        <script src="{{ asset('js/base.js') }}"></script>
 
         <script src="{{ asset('vendor/adminlte/dist/js/adminlte.min.js') }}"></script>
     @else

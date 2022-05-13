@@ -19,6 +19,10 @@ class LaratrustSetupTables extends Migration
             $table->string('name')->unique();
             $table->string('display_name')->nullable();
             $table->string('description')->nullable();
+            $table->bigInteger('created_id');
+            $table->string('created_name');
+            $table->bigInteger('updated_id');
+            $table->string('updated_name');
             $table->timestamps();
         });
 
@@ -28,6 +32,10 @@ class LaratrustSetupTables extends Migration
             $table->string('name')->unique();
             $table->string('display_name')->nullable();
             $table->string('description')->nullable();
+            $table->bigInteger('created_id');
+            $table->string('created_name');
+            $table->bigInteger('updated_id');
+            $table->string('updated_name');
             $table->timestamps();
         });
 

@@ -1,25 +1,26 @@
 var dhLoading, data_products = [];
+var base_url = $('#base_url').val();
 const SwalBs = Swal.mixin({
    customClass: {
       confirmButton: 'btn btn-primary',
       cancelButton: 'btn btn-danger mr-2'
    },
-   showClass: {
-      popup: 'animate__animated animate__fadeInDown'
-   },
-   hideClass: {
-      popup: 'animate__animated animate__fadeOutUp'
-   },
+   // showClass: {
+   //    popup: 'animate__animated animate__fadeInDown'
+   // },
+   // hideClass: {
+   //    popup: 'animate__animated animate__fadeOutUp'
+   // },
    reverseButtons: true,
    heightAuto: false,
    buttonsStyling: false
 })
 
 const swalDelete = {
-   title: 'Are you sure?',
-   text: "You won't be able to revert this!", 
+   title: 'Apakah anda yakin?',
+   text: "Anda tidak dapat mengembalikan data yang sudah dihapus!", 
    icon: 'warning', 
-   confirmButtonText: 'Yes, delete it!',
+   confirmButtonText: 'Ya!',
    showCancelButton: true
 }
 
@@ -155,84 +156,6 @@ $(document).ready(function()
    if($('[data-toggle="tooltip"]').length)
       $('[data-toggle="tooltip"]').tooltip({ trigger: 'hover' });
 
-   if($('.toggle-check').length)
-   {
-      $(document).on('change', '.toggle-check', function()
-      {
-         var elInvisile = $(this).data('class-invisible')
-         var elVisile = $(this).data('class-visible')
-
-         if(typeof elInvisile !== 'undefined')
-            $(elInvisile).removeClass('d-none')
-         if(typeof elVisile !== 'undefined')
-            $(elVisile).addClass('d-none')
-
-         if($(this).is(':checked'))
-         {
-            if(typeof elInvisile !== 'undefined')
-               $(elInvisile).addClass('d-none')
-            if(typeof elVisile !== 'undefined')
-               $(elVisile).removeClass('d-none')
-            $('.select2ajax:visible').each(function()
-            {
-               initiateSelect2Ajax(this);
-            })
-
-         }
-         createOptionVariation()
-
-         setTimeout(() => {
-            $(elVisile).find('.btn-tooltip:visible').tooltip({ trigger: 'hover',placement: 'top' });
-         }, 500);
-
-         $('.required').prop('required', false);
-         $('.required:visible').prop('required', true);
-      })
-   }
-
-   if($('.toggle-check-tr').length)
-   {
-
-      $('.toggle-check-tr:visible').bootstrapToggle({
-         on: 'Yes',
-         off: 'No',
-         size: "sm",
-         onstyle: "success",
-         offstyle: "danger",
-      })
-
-      $(document).on('change', '.toggle-check-tr', function()
-      {
-         var elInvisile = $(this).data('class-invisible')
-         var elVisile = $(this).data('class-visible')
-
-         if(typeof elInvisile !== 'undefined')
-            $(this).closest('tr').find(elInvisile).removeClass('d-none')
-         if(typeof elVisile !== 'undefined')
-            $(this).closest('tr').find(elVisile).addClass('d-none')
-
-         if($(this).is(':checked'))
-         {
-            if(typeof elInvisile !== 'undefined')
-               $(this).closest('tr').find(elInvisile).addClass('d-none')
-            if(typeof elVisile !== 'undefined')
-               $(this).closest('tr').find(elVisile).removeClass('d-none')
-            $(this).closest('tr').find('.select2ajax:visible').each(function()
-            {
-               initiateSelect2Ajax(this);
-            })
-
-         }
-
-         setTimeout(() => {
-            $(this).closest('tr').find(elVisile).find('.btn-tooltip:visible').tooltip({ trigger: 'hover',placement: 'top' });
-         }, 500);
-
-         $(this).closest('tr').find('.required').prop('required', false);
-         $(this).closest('tr').find('.required:visible').prop('required', true);
-      })
-   }
-
    if($('.btn-delete').length)
    {
       $(document).on('click', '.btn-delete', function()
@@ -245,7 +168,7 @@ $(document).ready(function()
             {
                SwalBs.fire(
                   '',
-                  'This table must have at least 1 row!',
+                  'Table ini harus memiliki setidaknya 1 baris!',
                   'warning'
                )
             }  
@@ -359,7 +282,7 @@ function initiateSelect2Ajax(curr)
          allowClear: $(curr).data('allow-clear') || false,
          language: {
             noResults: function(term) {
-               return 'No results matches!';
+               return 'Tidak ada yang cocok dengan kata kunci!';
             }
          },
          placeholder: data_placeholder,
@@ -440,7 +363,7 @@ function post(url, data, key)
                   if(typeof data.response.errors !== 'undefined')
                   {
                      SwalBs.fire({
-                        title: 'Error validation!',
+                        title: 'Validasi gagal!',
                         html: data.response.errors,
                         icon: 'error'
                      })
@@ -495,43 +418,6 @@ function post(url, data, key)
             dhLoading = null;
          }
       });
-   }
-}
-
-function createOptionVariation()
-{
-   if($('.row-variation:visible').length)
-   {
-      $('.row-variation:visible').each(function()
-      {
-         var var_name = $(this).find('.variation-name').val();
-         data_products.push({
-            id: var_name,
-            text: var_name
-         })
-      })
-   }
-   else if($('#productName').length)
-   {
-      data_products.push({
-         id: $('#productName').val(),
-         text: $('#productName').val()
-      })
-   }
-
-   if($('.select2product:visible').length)
-   {
-      $('.select2product:visible').each(function()
-      {
-         var val = $(this).val();
-         if(typeof $(this).data('select2') !== 'undefined')
-            $(this).html('').select2('destroy')
-   
-         $(this).select2({
-            data: data_products,
-            placeholder: 'Choose product ..',
-         }).val(null).trigger('change')
-      })
    }
 }
 

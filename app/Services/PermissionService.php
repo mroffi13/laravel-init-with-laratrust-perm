@@ -2,22 +2,22 @@
 
 namespace App\Services;
 
-use App\Models\Role;
+use App\Models\Permission;
 use Illuminate\Support\Facades\Log;
 
 class PermissionService
 {
-    public function index($request)
+    public function list($request)
     {
         try {
             $returns = [
                 'records' => 0,
                 'more' => false,
-                'roles' => null,
+                'permissions' => null,
             ];
 
-            $role = new Role;
-            $indexes = $role->getIndex();
+            $permission = new Permission;
+            $indexes = $permission->getIndex();
             $page = !empty($request->page) ? $request->page - 1 : 0;
             $pageSize = !empty($request->pageSize) ? $request->pageSize : 10;
             $keyword = !empty($request->keyword) ? $request->keyword : '';
@@ -26,19 +26,19 @@ class PermissionService
             $sort = !empty($request->sort) ? $request->sort : 'asc';
             $sort_by = !empty($request->sort_by) ? $request->sort_by : 'created_at';
 
-            $roleQ = Role::select('*');
+            $permissionQ = Permission::select('*');
 
             if (!empty($filters)) {
                 foreach ($filters as $where => $value_in) {
                     if (is_array($value_in))
-                        $roleQ->whereIn($where, $value_in);
+                        $permissionQ->whereIn($where, $value_in);
                     else
-                        $roleQ->where($where, $value_in);
+                        $permissionQ->where($where, $value_in);
                 }
             }
 
             if (!empty($keyword)) {
-                $roleQ->where(function ($query) use ($keyword, $indexes) {
+                $permissionQ->where(function ($query) use ($keyword, $indexes) {
                     foreach ($indexes as $src)
                         $query->orWhere($src, 'LIKE', '%' . $keyword . '%');
                 });
@@ -47,21 +47,21 @@ class PermissionService
             if (!empty($date_filters)) {
                 foreach ($date_filters as $key => $date) {
                     if (!empty($date['start']) && !empty($date['end'])) {
-                        $roleQ->whereBetween($key, [$date['start'], $date['end']]);
+                        $permissionQ->whereBetween($key, [$date['start'], $date['end']]);
                     }
                 }
             }
 
-            $returns['records'] = $roleQ->count();
+            $returns['records'] = $permissionQ->count();
 
             if (!empty($returns['records'])) {
-                $roleQ->orderBy($sort_by, $sort);
+                $permissionQ->orderBy($sort_by, $sort);
                 if (!empty($pageSize))
-                    $roleQ->offset(($page * $pageSize))->limit($pageSize);
+                    $permissionQ->offset(($page * $pageSize))->limit($pageSize);
 
-                $roles = $roleQ->get();
+                $permissions = $permissionQ->get();
 
-                $returns['roles'] = $roles;
+                $returns['permissions'] = $permissions;
                 $returns['more'] = (($page + 1) * $pageSize) < $returns['records'];
             }
 
