@@ -133,12 +133,6 @@ function getRoleList()
             // width:"200px"
          },
          {
-            data:'status',
-            responsivePriority: 8,
-            defaultContent: "<i>-</i>",
-            "className": 'align-middle'
-         },
-         {
             data:'action_html',
             "orderable": false,
             responsivePriority: 3,

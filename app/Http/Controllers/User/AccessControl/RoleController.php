@@ -5,12 +5,15 @@ namespace App\Http\Controllers\User\AccessControl;
 use App\Helpers\API;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Services\RoleService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class RoleController extends Controller
 {
     public $limit = 25;
+    protected $roleService;
 
     /**
      * Create a new controller instance.
@@ -19,7 +22,8 @@ class RoleController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth.dashboard');
+        $this->middleware('auth');
+        $this->roleService = new RoleService();
     }
 
     /**
@@ -29,11 +33,11 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
-        if(!Helper::isAbleTo($request, 'read-acl'))
-        {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('read-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Read Acl]. Please contact administrator!', 
-                'alert alert-warning', 
+                'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!',
+                'alert alert-warning',
                 'warning'
             );
             return redirect('/home');
@@ -46,7 +50,6 @@ class RoleController extends Controller
             'Created At',
             'Updated By',
             'Updated At',
-            'Status',
             'Action'
         ];
 
@@ -60,14 +63,14 @@ class RoleController extends Controller
      */
     public function create(Request $request)
     {
-        if(!Helper::isAbleTo($request, 'read-acl'))
-        {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('create-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Read Acl]. Please contact administrator!', 
-                'alert alert-warning', 
+                'Anda tidak memiliki akses [Create Acl]. Mohon hubungi administrator!',
+                'alert alert-warning',
                 'warning'
             );
-            return redirect('/');
+            return redirect('/access-control/roles');
         }
 
         return view('user.acl.role.edit');
@@ -90,11 +93,11 @@ class RoleController extends Controller
 
         try 
         {
+            $userLogin = Auth::user();
             // check permission
-            if(!Helper::isAbleTo($request, 'create-acl'))
-            {
+            if (!$userLogin->isAbleTo('create-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Create Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Create Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
@@ -114,36 +117,20 @@ class RoleController extends Controller
                 return response()->json($return);
             }
 
-            $params = [
-                'endpoint' => 'acl/roles/store',
-                'form_request' => [
-                    'role' => [
-                        'name' => $request->name,
-                        'permissions' => $request->permissions
-                    ]
-                ],
-                'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-            ];
-    
-            // send api
-            $response = API::post($params);
-            $response = json_decode($response);
+            $data = $this->roleService->store($request);
 
-            if($response->code == 200 && !empty($response->data->role))
+            if($data['role'])
                 Helper::sessionAlert(
-                    $response->message, 
+                    $data['message'], 
                     'swal-alert top-end',
                     'success'
                 );
             // dump($response);
-            if(!empty($response->data))
-                $return['response'] = $response->data;
-            if(!empty($response->message))
-            {
-                if($response->code !== 200)
-                    $return['error'] = true;
-                $return['message'] = $response->message;
-            }
+            if(!empty($data['role']))
+                $return['response'] = $data;
+            if(!empty($data['error']))
+                $return['error'] = true;
+            $return['message'] = !empty($data['message']) ? $data['message'] : $data['error'];
 
             return response()->json($return);
         } 
@@ -164,7 +151,8 @@ class RoleController extends Controller
     public function show(Request $request,$id)
     {
         // check permission
-        if(!Helper::isAbleTo($request, 'read-acl'))
+        $userLogin = Auth::user();
+        if(!$userLogin->isAbleTo('read-acl'))
         {
             Helper::sessionAlert(
                 'You don\'t have permission [Read Acl]. Please contact administrator!', 
@@ -174,29 +162,21 @@ class RoleController extends Controller
             return redirect('/access-control/roles');
         }
 
-        // start get user by id
-        $params = [
-            'endpoint' => 'acl/roles/'. $id,
-            'get_request' => [],
-            'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-        ];
-
-        $response = API::get($params);
-        $response = json_decode($response);
+        // get data dari service
+        $data = $this->roleService->show($id);
         // end get user by id
 
         // check error
-        if($response->code !== 200)
-        {
+        if (!empty($data['error'])) {
             Helper::sessionAlert(
-                $response->message, 
+                $data['error'],
                 'alert alert-warning',
                 'warning'
             );
             return redirect('/access-control/roles');
         }
 
-        $role = $response->data->role;
+        $role = $data['role'];
 
         return view('user.acl.role.detail', compact('role'));
     }
@@ -209,40 +189,31 @@ class RoleController extends Controller
      */
     public function edit(Request $request, $id)
     {
-        // check permission
-        if(!Helper::isAbleTo($request, 'update-acl'))
-        {
+        $userLogin = Auth::user();
+        if (!$userLogin->isAbleTo('update-acl')) {
             Helper::sessionAlert(
-                'You don\'t have permission [Update Acl]. Please contact administrator!', 
+                'Anda tidak memiliki akses [Update Acl]. Mohon hubungi administrator!',
                 'alert alert-warning',
                 'warning'
             );
             return redirect('/access-control/roles');
         }
 
-        // start get user by id
-        $params = [
-            'endpoint' => 'acl/roles/'. $id,
-            'get_request' => [],
-            'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-        ];
-
-        $response = API::get($params);
-        $response = json_decode($response);
+        // get data dari service
+        $data = $this->roleService->show($id);
         // end get user by id
 
         // check error
-        if($response->code !== 200)
-        {
+        if (!empty($data['error'])) {
             Helper::sessionAlert(
-                $response->message, 
+                $data['error'],
                 'alert alert-warning',
                 'warning'
             );
             return redirect('/access-control/roles');
         }
-        
-        $role = $response->data->role;
+
+        $role = $data['role'];
 
         return view('user.acl.role.edit', compact('role'));
     }
@@ -274,10 +245,10 @@ class RoleController extends Controller
                 return response()->json($return, 200);
             }
             // check permission
-            if(!Helper::isAbleTo($request, 'update-acl'))
-            {
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('update-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Update Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Update Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
@@ -294,42 +265,23 @@ class RoleController extends Controller
                 return response()->json($return);
             }
 
-            $params = [
-                'endpoint' => 'acl/roles/'.$id,
-                'form_request' => [
-                    'role' => [
-                        'name' => !empty($request->name) ? $request->name : null,
-                        'permissions' => $request->permissions,
-                        'status' => !empty($request->status) ? 1 : 2
-                    ]
-                ],
-                'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-            ];
-    
-            // send api
-            $response = API::put($params);
-            $response = json_decode($response);
-
-            if($response->code == 200 && !empty($response->data->role))
+            // kirim data ke service permission
+            $data = $this->roleService->update($request, $id);
+            // end kirim data
+            // dd($data);
+            // set jika berhasil diupdate
+            if (!empty($data['role']))
                 Helper::sessionAlert(
-                    $response->message, 
+                    $data['message'],
                     'swal-alert top-end',
                     'success'
                 );
 
-            // jika ada error validation
-            if(!empty($response->data->errors))
-            {
-                $errors = $response->data->errors;
-                $return['response']['errors'] = view('partials.error_validation', compact('errors'))->render();
-            }
-            elseif(!empty($response->data))
-                $return['response'] = $response->data;
-            if(!empty($response->message))
-            {
-                if($response->code !== 200)
-                    $return['error'] = true;
-                $return['message'] = $response->message;
+            if (!empty($data['role']))
+                $return['response'] = $data;
+            if (!empty($data['error'])) {
+                $return['error'] = true;
+                $return['message'] = $data['error'];
             }
 
             return response()->json($return);
@@ -371,32 +323,20 @@ class RoleController extends Controller
             }
             
             // check permission
-            if(!Helper::isAbleTo($request, 'delete-acl'))
-            {
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('delete-acl')) {
                 $return['error'] = true;
-                $return['message'] = 'You don\'t have permission [Delete Acl]. Please contact administrator!';
+                $return['message'] = 'Anda tidak memiliki akses [Delete Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
 
-            $params = [
-                'endpoint' => 'acl/roles/'.$id,
-                'form_request' => [
-                ],
-                'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-            ];
-    
-            // send api
-            $response = API::delete($params);
-            $response = json_decode($response);
+            $data = $this->roleService->destroy($id);
 
-            if(!empty($response->data))
-                $return['response'] = $response->data;
-            if(!empty($response->message))
-            {
-                if($response->code !== 200)
-                    $return['error'] = true;
-                $return['message'] = $response->message;
-            }
+            if (!empty($data['role']))
+                $return['response'] = $data;
+            if (!empty($data['error']))
+                $return['error'] = true;
+            $return['message'] = !empty($data['message']) ? $data['message'] : $data['error'];
 
             return response()->json($return);
         } 
@@ -419,13 +359,11 @@ class RoleController extends Controller
         try 
         {
             // dd($request->all());
-            if(!Helper::isAbleTo($request, 'read-acl'))
-            {
-                $return['error'] = 'You don\'t have permission [Read Acl]. Please contact administrator!';
+            $userLogin = Auth::user();
+            if (!$userLogin->isAbleTo('read-acl')) {
+                $return['error'] = 'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
-
-            $access_token = $request->access_token;
 
             if(!empty($request->length))
                 $this->limit = $request->length;
@@ -436,33 +374,26 @@ class RoleController extends Controller
             $sort_by = $request->columns[$column]['data'];
             $sort = $order['dir'];
 
-            $param = [
-                'endpoint' => 'acl/roles',
-                'get_request' => [
-                    'page' => $page,
-                    'pageSize' => $this->limit,
-                    'keyword' => addcslashes($request->search['value'], "'"),
-                    'filters' => [],
-                    'sort' => $sort,
-                    'sort_by' => $sort_by
-                ],
-                'headers' => [
-                    'Authorization' => 'Bearer '. $access_token
-                ]
-            ];
+            $new_request = collect([]);
+            $new_request->page = $page;
+            $new_request->pageSize = $this->limit;
+            $new_request->keyword = addcslashes($request->search['value'], "'");
+            $new_request->filters = [];
+            $new_request->sort = $sort;
+            $new_request->sort_by = $sort_by;
 
-            $param['get_request']['filters'] = !empty($param['get_request']['filters']) ? Helper::maybe_serialize($param['get_request']['filters']) : '';
 
-            $response = API::get($param);
-            $response = json_decode($response);
+            $new_request->filters = !empty($new_request->filters) ? Helper::maybe_serialize($new_request->filters) : '';
+            // dump($new_request);
+            $data = $this->roleService->list($new_request);
 
-            if($response->code == 200)
+            if(!isset($data['error']))
             {
-                $return['recordsTotal'] = $return['recordsFiltered'] = $response->data->records;
+                $return['recordsTotal'] = $return['recordsFiltered'] = $data['records'];
 
-                if(!empty($response->data->roles))
+                if(!empty($data['roles']))
                 {
-                    foreach ($response->data->roles as $role) 
+                    foreach ($data['roles'] as $role) 
                     {   
                         $created_at = $role->created_at;
                         $updated_at = $role->updated_at;
@@ -470,16 +401,6 @@ class RoleController extends Controller
                         $number++;
                         $role->created_at = date('d M y H:i:s', strtotime($created_at));
                         $role->updated_at = date('d M y H:i:s', strtotime($updated_at));
-                        switch ($role->status) 
-                        {
-                            case 2:
-                                $role->status = Helper::badge($role->status_label, 'warning');
-                                break;
-                            
-                            default:
-                                $role->status = Helper::badge($role->status_label, 'success');
-                                break;
-                        }
 
                         $role->url = '/access-control/roles/';
                         $role->action_html = view('partials.action', [
@@ -488,7 +409,7 @@ class RoleController extends Controller
                         ])->render();
                     }
 
-                    $return['data'] = $response->data->roles;
+                    $return['data'] = $data['roles'];
                 }
             }
 

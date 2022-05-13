@@ -22,10 +22,10 @@
          <div class="col-md-12">
             <div class="card card-outline card-primary">
                <div class="card-header">
-                  @if (\Helper::isAbleTo(request(), 'create-acl'))
+                  @if (Auth::user()->isAbleTo('create-acl'))
                      <a href="{{url('access-control/roles/create')}}" class="btn btn-flat btn-primary">
                         <i class="fas fa-plus"></i>
-                        Add Role
+                        Tambah Role
                      </a>
                   @endif
                </div>

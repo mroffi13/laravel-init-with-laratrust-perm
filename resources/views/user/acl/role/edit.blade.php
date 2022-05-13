@@ -60,7 +60,7 @@
                      <div class="col-md-12">
                         <div class="form-group">
                            <label for="permission">Permissions *</label>
-                           <select name="permissions[]" @if(!empty($role->permissions)) data-selected="{{\Helper::maybe_serialize(array_column($role->permissions, 'id'))}}" @endif id="permission" data-url="{{url('access-control/permissions/getSelect2Option')}}" multiple style="width: 100%" required class="form-control rounded-0 bsDualistbox" data-data_placeholder="Choose permissions .." data-url="{{url('access-control/permissions/getSelect2Option')}}">
+                           <select name="permissions[]" @if(!empty($role->permissions)) data-selected="{{\Helper::maybe_serialize(array_column($role->permissions->toArray(), 'id'))}}" @endif id="permission" data-url="{{url('access-control/permissions/getSelect2Option')}}" multiple style="width: 100%" required class="form-control rounded-0 bsDualistbox" data-data_placeholder="Choose permissions .." data-url="{{url('access-control/permissions/getSelect2Option')}}">
                            </select> 
                            <div class="invalid-validate">
                               <div class="invalid-feedback">
@@ -70,7 +70,7 @@
                         </div>
                      </div>
                   </div>
-                  @if (!empty($role))
+                  {{-- @if (!empty($role))
                      <div class="form-row">
                         <div class="col-md-6">
                            <div class="form-group">
@@ -79,7 +79,7 @@
                            </div>
                         </div>
                      </div>
-                  @endif
+                  @endif --}}
                </div>
 
                <div class="card-footer">

@@ -43,7 +43,7 @@
                         @endif
                      </div>
                   </div>
-                  <div class="col-md-6">
+                  {{-- <div class="col-md-6">
                      <div class="form-group">
                         <label class="d-block" for="status">Status</label>
                         @switch($role->status)
@@ -54,7 +54,7 @@
                               {!! \Helper::badge($role->status_label, 'warning') !!}  
                         @endswitch
                      </div>
-                  </div>
+                  </div> --}}
                </div>
                <div class="form-row">
                   <div class="col-md-6">
@@ -76,7 +76,7 @@
 
             <div class="card-footer">
                <a href="{{url('/access-control/roles')}}" class="btn btn-flat btn-default">Back</a>
-               @if (\Helper::isAbleTo(request(), 'update-acl'))
+               @if (Auth::user()->isAbleTo('update-acl'))
                   <a href="{{url('/access-control/roles/'.$role->id.'/edit')}}" class="btn btn-flat btn-info">Edit</a>
                @endif
             </div>

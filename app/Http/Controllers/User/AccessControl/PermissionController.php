@@ -447,40 +447,35 @@ class PermissionController extends Controller
             // dd($request->all());
             $userLogin = Auth::user();
             if (!$userLogin->isAbleTo('read-acl')) {
-                $return['error'] = 'You don\'t have permission [Read Acl]. Please contact administrator!';
+                $return['error'] = 'Anda tidak memiliki akses [Read Acl]. Mohon hubungi administrator!';
                 return response()->json($return, 200);
             }
-
-            $access_token = $request->access_token;
 
             $page = !empty($request->page) ? $request->page : 1;
             $search = !empty($request->search) ? $request->search : '';
 
-            $param = [
-                'endpoint' => 'acl/permissions/getSelect2Resource',
-                'get_request' => [
-                    'page' => $page,
-                    'pageSize' => $this->limit,
-                    'keyword' => addcslashes($search, "'"),
-                    'filters' => [],
-                ],
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $access_token
-                ]
+            $data_req = [
+                'page' => $page,
+                'pageSize' => $this->limit,
+                'keyword' => addcslashes($search, "'"),
+                'filters' => [],
             ];
 
-            $param['get_request']['filters'] = !empty($param['get_request']['filters']) ? Helper::maybe_serialize($param['get_request']['filters']) : '';
+            $data_req['filters'] = !empty($data_req['filters']) ? Helper::maybe_serialize($data_req['filters']) : '';
 
-            $response = API::get($param);
-            $response = json_decode($response);
+            // Create new Req
+            $new_request = new Request();
+            $new_request->request->add($data_req);
+
+            $data = $this->permissionService->getSelect2Resource($new_request);
             $code = 404;
-            if ($response->code == 200) {
-                $return = $response->data->data;
+            if (!empty($data['data']['results'])) {
+                $return = $data['data'];
                 if (!empty($request->result_html))
-                    $return->result_html = view(
+                    $return['result_html'] = view(
                         'partials.option',
                         [
-                            'datas' => $return->results,
+                            'datas' => !empty($return['results']) ? json_decode(json_encode($return['results'])) : [],
                             'selected' => !empty($request->selected) ? $request->selected : []
                         ]
                     )->render();

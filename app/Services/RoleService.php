@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use App\Helpers\Helper;
-use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
-class PermissionService
+class RoleService
 {
     public function list($request)
     {
@@ -15,11 +15,11 @@ class PermissionService
             $returns = [
                 'records' => 0,
                 'more' => false,
-                'permissions' => null,
+                'roles' => null,
             ];
 
-            $permission = new Permission;
-            $indexes = $permission->getIndex();
+            $role = new Role;
+            $indexes = $role->getIndex();
             $page = !empty($request->page) ? $request->page - 1 : 0;
             $pageSize = !empty($request->pageSize) ? $request->pageSize : 10;
             $keyword = !empty($request->keyword) ? $request->keyword : '';
@@ -28,19 +28,19 @@ class PermissionService
             $sort = !empty($request->sort) ? $request->sort : 'asc';
             $sort_by = !empty($request->sort_by) ? $request->sort_by : 'created_at';
 
-            $permissionQ = Permission::select('*');
+            $roleQ = Role::select('*');
 
             if (!empty($filters)) {
                 foreach ($filters as $where => $value_in) {
                     if (is_array($value_in))
-                        $permissionQ->whereIn($where, $value_in);
+                        $roleQ->whereIn($where, $value_in);
                     else
-                        $permissionQ->where($where, $value_in);
+                        $roleQ->where($where, $value_in);
                 }
             }
 
             if (!empty($keyword)) {
-                $permissionQ->where(function ($query) use ($keyword, $indexes) {
+                $roleQ->where(function ($query) use ($keyword, $indexes) {
                     foreach ($indexes as $src)
                         $query->orWhere($src, 'LIKE', '%' . $keyword . '%');
                 });
@@ -49,21 +49,21 @@ class PermissionService
             if (!empty($date_filters)) {
                 foreach ($date_filters as $key => $date) {
                     if (!empty($date['start']) && !empty($date['end'])) {
-                        $permissionQ->whereBetween($key, [$date['start'], $date['end']]);
+                        $roleQ->whereBetween($key, [$date['start'], $date['end']]);
                     }
                 }
             }
 
-            $returns['records'] = $permissionQ->count();
+            $returns['records'] = $roleQ->count();
 
             if (!empty($returns['records'])) {
-                $permissionQ->orderBy($sort_by, $sort);
+                $roleQ->orderBy($sort_by, $sort);
                 if (!empty($pageSize))
-                    $permissionQ->offset(($page * $pageSize))->limit($pageSize);
+                    $roleQ->offset(($page * $pageSize))->limit($pageSize);
 
-                $permissions = $permissionQ->get();
+                $roles = $roleQ->get();
 
-                $returns['permissions'] = $permissions;
+                $returns['roles'] = $roles;
                 $returns['more'] = (($page + 1) * $pageSize) < $returns['records'];
             }
 
@@ -81,22 +81,25 @@ class PermissionService
         try {
             $login = Auth::user();
 
-            $exist = Permission::where('display_name', $request->name)->first();
+            $exist = Role::where('display_name', $request->name)->first();
             if (!empty($exist))
                 return ['error' => "Permission {$request->name} sudah ada didatabase."];
 
-            $permission = new Permission;
-            $permission->name = str_replace(' ', '-', strtolower($request->name));
-            $permission->display_name = $request->name;
-            if (!empty($permission->description)) $permission->description = $request->description;
-            Helper::insert_log_user($permission, $login);
-            $permission->save();
+            $role = new Role;
+            $role->name = str_replace(' ', '_', strtolower($request->name));
+            $role->display_name = $request->name;
+            if (!empty($role->description)) $role->description = $request->description;
+            Helper::insert_log_user($role, $login);
+            $role->save();
 
-            $permission = Permission::find($permission->id);
+            if(!empty($request->permissions))
+                $role->syncPermissions($request->permissions);
+
+            $role = Role::find($role->id);
 
             return [
-                'permission' => $permission,
-                'message' => "Permission {$permission->display_name} berhasil dibuat."
+                'role' => $role,
+                'message' => "Role {$role->display_name} berhasil dibuat."
             ];
         } catch (\Exception $e) {
             $message = $e->getMessage();
@@ -111,25 +114,28 @@ class PermissionService
         try {
             $login = Auth::user();
 
-            $permission = Permission::find($id);
-            if(empty($permission))
-                return ['error' => 'ID Permission #'. $id . ' tidak ditemukan!'];
+            $role = Role::find($id);
+            if(empty($role))
+                return ['error' => 'ID Role #'. $id . ' tidak ditemukan!'];
 
-            $exist = Permission::where('display_name', $request->name)->where('id', '!=', $id)->first();
+            $exist = Role::where('display_name', $request->name)->where('id', '!=', $id)->first();
             if (!empty($exist))
-                return ['error' => "Permission {$request->name} sudah ada didatabase."];
+                return ['error' => "Role {$request->name} sudah ada didatabase."];
 
-            $permission->name = str_replace(' ', '-', strtolower($request->name));
-            $permission->display_name = $request->name;
-            if (!empty($permission->description)) $permission->description = $request->description;
-            Helper::insert_log_user($permission, $login, 1);
-            $permission->save();
+            $role->name = str_replace(' ', '_', strtolower($request->name));
+            $role->display_name = $request->name;
+            if (!empty($role->description)) $role->description = $request->description;
+            Helper::insert_log_user($role, $login, 1);
+            $role->save();
 
-            $permission = Permission::find($permission->id);
+            $permission = !empty($request->permissions) ? $request->permissions : [];
+            $role->syncPermissions($permission);
+
+            $role = Role::find($role->id);
 
             return [
-                'permission' => $permission,
-                'message' => "Permission {$permission->display_name} berhasil diupdate."
+                'role' => $role,
+                'message' => "Role {$role->display_name} berhasil diupdate."
             ];
         } catch (\Exception $e) {
             $message = $e->getMessage();
@@ -143,12 +149,12 @@ class PermissionService
     {
         try {
 
-            $permission = Permission::find($id);
-            if (empty($permission))
-                return ['error' => "ID Permission #{$id} not found."];
+            $role = Role::with(['permissions'])->find($id);
+            if (empty($role))
+                return ['error' => "ID Role #{$id} not found."];
 
             return [
-                'permission' => $permission,
+                'role' => $role,
             ];
         } catch (\Exception $e) {
             $message = $e->getMessage();
@@ -163,15 +169,15 @@ class PermissionService
         try {
             $login = Auth::user();
 
-            $permission = Permission::find($id);
-            if (empty($permission))
-                return ['error' => "ID Permission #{$id} tidak ditemukan."];
+            $role = Role::find($id);
+            if (empty($role))
+                return ['error' => "ID Role #{$id} tidak ditemukan."];
 
-            $permission->delete();
+            $role->delete();
 
             return [
-                'permission' => $permission,
-                'message' => "Permission {$permission->display_name} berhasil dihapus!"
+                'role' => $role,
+                'message' => "Role {$role->display_name} berhasil dihapus!"
             ];
         } catch (\Exception $e) {
             $message = $e->getMessage();
@@ -195,33 +201,33 @@ class PermissionService
                 ],
             ];
 
-            $permission = new Permission;
-            $indexes = $permission->getIndex();
+            $role = new Role;
+            $indexes = $role->getIndex();
             $page = !empty($request->page) ? $request->page - 1 : 0;
             $pageSize = !empty($request->pageSize) ? $request->pageSize : 10;
             $keyword = !empty($request->keyword) ? $request->keyword : '';
             $sort = !empty($request->sort) ? $request->sort : 'asc';
             $sort_by = !empty($request->sort_by) ? $request->sort_by : 'created_at';
 
-            $permissionQ = Permission::selectRaw('id, display_name as text');
+            $roleQ = Role::selectRaw('id, display_name as text');
 
             if (!empty($keyword)) {
-                $permissionQ->where(function ($query) use ($keyword, $indexes) {
+                $roleQ->where(function ($query) use ($keyword, $indexes) {
                     foreach ($indexes as $src)
                         $query->orWhere($src, 'LIKE', '%' . $keyword . '%');
                 });
             }
 
-            $returns['records'] = $permissionQ->count();
+            $returns['records'] = $roleQ->count();
 
             if (!empty($returns['records'])) {
-                $permissionQ->orderBy($sort_by, $sort);
+                $roleQ->orderBy($sort_by, $sort);
                 if (!empty($pageSize))
-                    $permissionQ->offset(($page * $pageSize))->limit($pageSize);
+                    $roleQ->offset(($page * $pageSize))->limit($pageSize);
 
-                $permissions = $permissionQ->get();
+                $roles = $roleQ->get();
 
-                $returns['data']['results'] = $permissions;
+                $returns['data']['results'] = $roles;
                 $returns['data']['pagination']['more'] = (($page + 1) * $pageSize) < $returns['records'];
             }
 
