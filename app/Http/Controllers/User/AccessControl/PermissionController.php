@@ -124,25 +124,16 @@ class PermissionController extends Controller
                 $errors = [];
                 foreach ($request->action as $action) {
                     if (!empty($request->name)) {
-                        $params = [
-                            'endpoint' => 'acl/permissions/store',
-                            'form_request' => [
-                                'permission' => [
-                                    'name' => $action . ' ' . $request->name
-                                ]
-                            ],
-                            'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-                        ];
-
+                        $new_request = collect([]);
+                        $new_request->name = $action . ' ' . $request->name;
                         // send api
-                        $response = API::post($params);
-                        $response = json_decode($response);
+                        $data = $this->permissionService->store($new_request);
                         // dd($params);
-                        if ($response->code == 200) {
+                        if (!empty($data['permission'])) {
                             $send_count++;
-                            $message[] = $response->message;
+                            $message[] = $data['message'];
                         } else
-                            $errors[$action] = [$response->message];
+                            $errors[$action] = [$data['error']];
                     }
                 }
 
@@ -162,10 +153,10 @@ class PermissionController extends Controller
                     'success'
                 );
             // dump($response);
-            if (!empty($response->data))
-                $return['response'] = $response->data;
+            if (!empty($data['permission']))
+                $return['response'] = $data;
             if (!empty($message)) {
-                if ($response->code !== 200)
+                if (!empty($data['error']))
                     $return['error'] = true;
                 $return['message'] = $message;
             }
@@ -197,28 +188,21 @@ class PermissionController extends Controller
             return redirect('/access-control/permissions');
         }
 
-        // start get user by id
-        $params = [
-            'endpoint' => 'acl/permissions/' . $id,
-            'get_request' => [],
-            'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-        ];
-
-        $response = API::get($params);
-        $response = json_decode($response);
+        // get data dari service
+        $data = $this->permissionService->show($id);
         // end get user by id
 
         // check error
-        if ($response->code !== 200) {
+        if (!empty($data['error'])) {
             Helper::sessionAlert(
-                $response->message,
+                $data['error'],
                 'alert alert-warning',
                 'warning'
             );
             return redirect('/access-control/permissions');
         }
 
-        $permission = $response->data->permission;
+        $permission = $data['permission'];
 
         return view('user.acl.permission.detail', compact('permission'));
     }
@@ -242,28 +226,21 @@ class PermissionController extends Controller
             return redirect('/access-control/permissions');
         }
 
-        // start get user by id
-        $params = [
-            'endpoint' => 'acl/permissions/' . $id,
-            'get_request' => [],
-            'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-        ];
-
-        $response = API::get($params);
-        $response = json_decode($response);
+        // get data dari service
+        $data = $this->permissionService->show($id);
         // end get user by id
 
         // check error
-        if ($response->code !== 200) {
+        if (!empty($data['error'])) {
             Helper::sessionAlert(
-                $response->message,
+                $data['error'],
                 'alert alert-warning',
                 'warning'
             );
             return redirect('/access-control/permissions');
         }
 
-        $permission = $response->data->permission;
+        $permission = $data['permission'];
 
         return view('user.acl.permission.edit', compact('permission'));
     }
@@ -294,38 +271,43 @@ class PermissionController extends Controller
                 return response()->json($return, 200);
             }
 
-            $params = [
-                'endpoint' => 'acl/permissions/' . $id,
-                'form_request' => [
-                    'permission' => [
-                        'name' => !empty($request->name) ? $request->name : null,
-                        'status' => !empty($request->status) ? 1 : 2
-                    ]
-                ],
-                'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
+            try {
+                $id = decrypt($id);
+            } catch (\Exception $e) {
+                $return['error'] = true;
+                $return['message'] = 'ID Salah!';
+                return response()->json($return, 200);
+            }
+
+            $valid = [
+                'name' => ['required', 'string', 'max:255'],
             ];
 
-            // send api
-            $response = API::put($params);
-            $response = json_decode($response);
+            $validator = Validator::make($request->all(), $valid);
+            if ($validator->fails()) {
+                $return['error'] = true;
+                $errors = json_decode(json_encode($validator->messages()));
+                $return['response']['errors'] = view('partials.error_validation', compact('errors'))->render();
+                return response()->json($return);
+            }
 
-            if ($response->code == 200 && !empty($response->data->permission))
+            // kirim data ke service permission
+            $data = $this->permissionService->update($request, $id);
+            // end kirim data
+            // dd($data);
+            // set jika berhasil diupdate
+            if (!empty($data['permission']))
                 Helper::sessionAlert(
-                    $response->message,
+                    $data['message'],
                     'swal-alert top-end',
                     'success'
                 );
 
-            // jika ada error validation
-            if (!empty($response->data->errors)) {
-                $errors = $response->data->errors;
-                $return['response']['errors'] = view('partials.error_validation', compact('errors'))->render();
-            } elseif (!empty($response->data))
-                $return['response'] = $response->data;
-            if (!empty($response->message)) {
-                if ($response->code !== 200)
-                    $return['error'] = true;
-                $return['message'] = $response->message;
+            if (!empty($data['permission']))
+                $return['response'] = $data;
+            if (!empty($data['error'])) {
+                $return['error'] = true;
+                $return['message'] = $data['error'];
             }
 
             return response()->json($return);
@@ -357,7 +339,7 @@ class PermissionController extends Controller
                 $id = decrypt($id);
             } catch (\Exception $e) {
                 $return['error'] = true;
-                $return['message'] = 'Wrong id!';
+                $return['message'] = 'ID Salah!';
                 return response()->json($return, 200);
             }
 
@@ -369,22 +351,14 @@ class PermissionController extends Controller
                 return response()->json($return, 200);
             }
 
-            $params = [
-                'endpoint' => 'acl/permissions/' . $id,
-                'form_request' => [],
-                'headers' => ['Authorization' => 'Bearer ' . $request->access_token]
-            ];
+            $data = $this->permissionService->destroy($id);
 
-            // send api
-            $response = API::delete($params);
-            $response = json_decode($response);
-
-            if (!empty($response->data))
-                $return['response'] = $response->data;
-            if (!empty($response->message)) {
-                if ($response->code !== 200)
+            if (!empty($data['permission']))
+                $return['response'] = $data;
+            if (!empty($data['message'])) {
+                if (!empty($data['error']))
                     $return['error'] = true;
-                $return['message'] = $response->message;
+                $return['message'] = $data['message'];
             }
 
             return response()->json($return);
@@ -448,40 +422,18 @@ class PermissionController extends Controller
                         $permission->url = '/access-control/permissions/';
                         $permission->action_html = view('partials.action', [
                             'data' => $permission,
-                            'buttons' => [
-                                [
-                                    'icon' => 'fas fa-eye', // icon action
-                                    'label' => 'Detail', // label action
-                                    'show' => true, // show action
-                                    'classes' => '', // add classes
-                                    'url' => $permission->url . $permission->id, // url
-                                    'can' => 'read-acl', // permission
-                                    'attributes' => null // data-*
-                                ],
-                                [
-                                    'icon' => 'fas fa-trash',
-                                    'label' => 'Delete',
-                                    'show' => true,
-                                    'url' => null,
-                                    'classes' => 'delete-btn',
-                                    'can' => 'delete-acl',
-                                    'attributes' => [
-                                        'id' => encrypt($permission->id)
-                                    ]
-                                ],
-                            ],
+                            'buttons' => Helper::button_defaut($permission, 'acl'),
                         ])->render();
                     }
 
                     $return['data'] = $data['permissions'];
                 }
-            }
-            else
+            } else
                 $return['error'] = $data['error'];
 
             return response()->json($return);
         } catch (\Exception $e) {
-            $return['error'] = $e->getMessage(). '. Line: '. $e->getLine();
+            $return['error'] = $e->getMessage() . '. Line: ' . $e->getLine();
             return response()->json($return);
         }
     }

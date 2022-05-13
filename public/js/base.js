@@ -21,6 +21,7 @@ const swalDelete = {
    text: "Anda tidak dapat mengembalikan data yang sudah dihapus!", 
    icon: 'warning', 
    confirmButtonText: 'Ya!',
+   cancelButtonText: 'Batal!',
    showCancelButton: true
 }
 

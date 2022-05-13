@@ -75,7 +75,7 @@
                         </div>
                      @endif
                   </div>
-                  @if (!empty($permission))
+                  {{-- @if (!empty($permission))
                      <div class="form-row">
                         <div class="col-md-6">
                            <div class="form-group">
@@ -84,7 +84,7 @@
                            </div>
                         </div>
                      </div>
-                  @endif
+                  @endif --}}
                </div>
 
                <div class="card-footer">

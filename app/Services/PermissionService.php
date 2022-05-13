@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Helpers\Helper;
 use App\Models\Permission;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PermissionService
@@ -66,6 +68,111 @@ class PermissionService
             }
 
             return $returns;
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $dev = 'File: ' . $e->getFile() . '. Line: ' . $e->getLine();
+            Log::error($dev);
+            return ['error' => $message];
+        }
+    }
+
+    public function store($request)
+    {
+        try {
+            $login = Auth::user();
+
+            $exist = Permission::where('display_name', $request->name)->first();
+            if (!empty($exist))
+                return ['error' => "Permission {$request->name} sudah ada didatabase."];
+
+            $permission = new Permission;
+            $permission->name = str_replace(' ', '-', strtolower($request->name));
+            $permission->display_name = $request->name;
+            if (!empty($permission->description)) $permission->description = $request->description;
+            Helper::insert_log_user($permission, $login);
+            $permission->save();
+
+            $permission = Permission::find($permission->id);
+
+            return [
+                'permission' => $permission,
+                'message' => "Permission {$permission->display_name} berhasil dibuat."
+            ];
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $dev = 'File: ' . $e->getFile() . '. Line: ' . $e->getLine();
+            Log::error($dev);
+            return ['error' => $message];
+        }
+    }
+
+    public function update($request, $id)
+    {
+        try {
+            $login = Auth::user();
+
+            $permission = Permission::find($id);
+            if(empty($permission))
+                return ['error' => 'ID Permission #'. $id . ' tidak ditemukan!'];
+
+            $exist = Permission::where('display_name', $request->name)->where('id', '!=', $id)->first();
+            if (!empty($exist))
+                return ['error' => "Permission {$request->name} sudah ada didatabase."];
+
+            $permission->name = str_replace(' ', '-', strtolower($request->name));
+            $permission->display_name = $request->name;
+            if (!empty($permission->description)) $permission->description = $request->description;
+            Helper::insert_log_user($permission, $login, 1);
+            $permission->save();
+
+            $permission = Permission::find($permission->id);
+
+            return [
+                'permission' => $permission,
+                'message' => "Permission {$permission->display_name} berhasil diupdate."
+            ];
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $dev = 'File: ' . $e->getFile() . '. Line: ' . $e->getLine();
+            Log::error($dev);
+            return ['error' => $message];
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+
+            $permission = Permission::find($id);
+            if (empty($permission))
+                return ['error' => "ID Permission #{$id} not found."];
+
+            return [
+                'permission' => $permission,
+            ];
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $dev = 'File: ' . $e->getFile() . '. Line: ' . $e->getLine();
+            Log::error($dev);
+            return ['error' => $message];
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $login = Auth::user();
+
+            $permission = Permission::find($id);
+            if (empty($permission))
+                return ['error' => "ID Permission #{$id} tidak ditemukan."];
+
+            $permission->delete();
+
+            return [
+                'permission' => $permission,
+                'message' => "Permission {$permission->display_name} berhasil dihapus!"
+            ];
         } catch (\Exception $e) {
             $message = $e->getMessage();
             $dev = 'File: ' . $e->getFile() . '. Line: ' . $e->getLine();

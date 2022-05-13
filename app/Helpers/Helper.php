@@ -133,4 +133,15 @@ class Helper
             ],
         ];
     }
+
+    public static function insert_log_user($model, $login, $update = 0)
+    {
+        if (empty($update)) {
+            $model->created_id = $login->id;
+            $model->created_name = $login->name;
+        }
+
+        $model->updated_id = $login->id;
+        $model->updated_name = $login->name;
+    }
 }
