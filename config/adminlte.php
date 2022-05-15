@@ -245,9 +245,9 @@ return [
             'text' => 'Users',
             'url'  => 'users',
             'active' => [
-                'regex:@^users/[0-9]+/edit$@', 
-                'users', 
-                'regex:@^users/[0-9]+$@', 
+                'regex:@^users/[0-9]+/edit$@',
+                'users',
+                'regex:@^users/[0-9]+$@',
                 'users/create'
             ],
             'icon' => 'fas nav-icon fa-users',
@@ -261,9 +261,9 @@ return [
                     'text' => 'Permissions',
                     'url'  => 'access-control/permissions',
                     'active' => [
-                        'regex:@^access-control/permissions/[0-9]+/edit$@', 
-                        'access-control/permissions', 
-                        'regex:@^access-control/permissions/[0-9]+$@', 
+                        'regex:@^access-control/permissions/[0-9]+/edit$@',
+                        'access-control/permissions',
+                        'regex:@^access-control/permissions/[0-9]+$@',
                         'access-control/permissions/create'
                     ],
                 ],
@@ -271,9 +271,9 @@ return [
                     'text' => 'Roles',
                     'url'  => 'access-control/roles',
                     'active' => [
-                        'regex:@^access-control/roles/[0-9]+/edit$@', 
-                        'access-control/roles', 
-                        'regex:@^access-control/roles/[0-9]+$@', 
+                        'regex:@^access-control/roles/[0-9]+/edit$@',
+                        'access-control/roles',
+                        'regex:@^access-control/roles/[0-9]+$@',
                         'access-control/roles/create'
                     ],
                 ],
@@ -294,13 +294,14 @@ return [
     */
 
     'filters' => [
-        JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
+        // JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter::class,
+        App\MenuFilter::class,
     ],
 
     /*
