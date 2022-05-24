@@ -238,6 +238,10 @@ return [
 
         // Sidebar items:
         [
+            'type' => 'sidebar-menu-search',
+            'text' => 'search',
+        ],
+        [
             'header' => 'USER MANAGEMENT',
             'classes' => 'border-bottom',
         ],
